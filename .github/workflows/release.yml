@@ -1,0 +1,131 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-and-release:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest'
+            target: 'aarch64-apple-darwin'
+            artifact_name: 'imagen3-mcp-aarch64-apple-darwin'
+          - platform: 'macos-latest'
+            target: 'x86_64-apple-darwin'
+            artifact_name: 'imagen3-mcp-x86_64-apple-darwin'
+          - platform: 'ubuntu-22.04'
+            target: 'x86_64-unknown-linux-gnu'
+            artifact_name: 'imagen3-mcp-x86_64-linux'
+          - platform: 'windows-latest'
+            target: 'x86_64-pc-windows-msvc'
+            artifact_name: 'imagen3-mcp-x86_64-windows'
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+        override: true
+        target: ${{ matrix.target }}
+    
+    - name: Build
+      run: cargo build --release --target ${{ matrix.target || 'x86_64-unknown-linux-gnu' }} --verbose
+      
+    - name: Create artifact directory
+      run: mkdir -p artifacts
+      
+    - name: Package (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        cp target/${{ matrix.target || 'x86_64-unknown-linux-gnu' }}/release/imagen3-mcp artifacts/${{ matrix.artifact_name }}
+        chmod +x artifacts/${{ matrix.artifact_name }}
+        
+    - name: Package (Windows)
+      if: runner.os == 'Windows'
+      run: copy target\${{ matrix.target || 'x86_64-pc-windows-msvc' }}\release\imagen3-mcp.exe artifacts\${{ matrix.artifact_name }}.exe
+      
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}
+        path: artifacts/${{ matrix.artifact_name }}${{ runner.os == 'Windows' && '.exe' || '' }}
+        if-no-files-found: error
+
+  create-release:
+    needs: build-and-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          draft: true
+          prerelease: false
+          
+      - name: Upload Release Assets (macOS ARM)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/imagen3-mcp-aarch64-apple-darwin/imagen3-mcp-aarch64-apple-darwin
+          asset_name: imagen3-mcp-aarch64-apple-darwin
+          asset_content_type: application/octet-stream
+          
+      - name: Upload Release Assets (macOS Intel)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/imagen3-mcp-x86_64-apple-darwin/imagen3-mcp-x86_64-apple-darwin
+          asset_name: imagen3-mcp-x86_64-apple-darwin
+          asset_content_type: application/octet-stream
+          
+      - name: Upload Release Assets (Linux)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/imagen3-mcp-x86_64-linux/imagen3-mcp-x86_64-linux
+          asset_name: imagen3-mcp-x86_64-linux
+          asset_content_type: application/octet-stream
+          
+      - name: Upload Release Assets (Windows)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: artifacts/imagen3-mcp-x86_64-windows/imagen3-mcp-x86_64-windows.exe
+          asset_name: imagen3-mcp-x86_64-windows.exe
+          asset_content_type: application/octet-stream
+          
+      - name: Publish Release
+        uses: eregon/publish-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          release_id: ${{ steps.create_release.outputs.id }}
