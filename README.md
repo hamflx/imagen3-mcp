@@ -37,8 +37,7 @@
     "imagen3": {
       "command": "C:\\bin\\imagen3-mcp.exe",
       "env": {
-        "GEMINI_API_KEY": "<GEMINI_API_KEY>",
-        "BASE_URL": "https://lingxi-proxy.hamflx.dev/api/provider/google"
+        "GEMINI_API_KEY": "<GEMINI_API_KEY>"
       }
     }
   }
