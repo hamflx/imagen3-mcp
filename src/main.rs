@@ -4,7 +4,7 @@ use directories::ProjectDirs;
 use reqwest;
 use rmcp::{
     ServerHandler, ServiceExt,
-    model::{Implementation, ServerInfo},
+    model::{Implementation, ServerCapabilities, ServerInfo},
     schemars, tool,
 };
 use serde::{Deserialize, Serialize};
@@ -290,6 +290,9 @@ Example Prompt: an expansive mountain range, landscape wide angle 10mm
 Example Prompt: a photo of the moon, astro photography, wide angle 10mm
 </Imagen_prompt_guide>
             "#.trim().into()),
+            capabilities: ServerCapabilities::builder()
+                .enable_tools()
+                .build(),
             ..Default::default()
         }
     }
