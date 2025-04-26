@@ -20,7 +20,9 @@ struct ImageGenerationServer {
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct ImagePrompt {
-    #[schemars(description = "Prompt for image generation. MUST be in English.")]
+    #[schemars(
+        description = "The prompt text for image generation. The prompt MUST be in English."
+    )]
     prompt: String,
 }
 
@@ -96,8 +98,18 @@ async fn generate_image_from_gemini(
         .json(&request)
         .send()
         .await?
-        .json::<GeminiResponse>()
+        .text()
         .await?;
+    let response: GeminiResponse = match serde_json::from_str(&response) {
+        Ok(response) => response,
+        Err(e) => {
+            return Err(format!(
+                "Failed to parse Gemini response: {}\nThe response was: {}",
+                e, response
+            )
+            .into());
+        }
+    };
 
     // Make sure we got at least one prediction
     if response.predictions.is_empty() {
