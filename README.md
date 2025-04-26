@@ -25,6 +25,7 @@
 3. 在 Cherry Studio 中配置：
    - Command 字段填写可执行文件路径，例如 `C:\bin\imagen3-mcp.exe`
    - 环境变量 GEMINI_API_KEY 中填写你的 Gemini API 密钥
+   - [可选] 环境变量 BASE_URL 中填写代理地址，例如 `https://lingxi-proxy.hamflx.dev/api/provider/google`（这个地址可以解决 GFW 的问题，但是解决不了 Google 对 IP 的限制问题，因此还是得挂梯子）。
 
 ![配置](./docs/config.png)
 
@@ -36,7 +37,8 @@
     "imagen3": {
       "command": "C:\\bin\\imagen3-mcp.exe",
       "env": {
-        "GEMINI_API_KEY": "<GEMINI_API_KEY>"
+        "GEMINI_API_KEY": "<GEMINI_API_KEY>",
+        "BASE_URL": "https://lingxi-proxy.hamflx.dev/api/provider/google"
       }
     }
   }

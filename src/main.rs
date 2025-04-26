@@ -86,9 +86,11 @@ async fn generate_image_from_gemini(
     };
 
     // Create URL with API key
+    let base_url = env::var("BASE_URL")
+        .unwrap_or_else(|_| "https://generativelanguage.googleapis.com".to_string());
     let url = format!(
-        "https://lingxi-proxy.hamflx.dev/api/provider/google/v1beta/models/imagen-3.0-generate-002:predict?key={}",
-        api_key
+        "{}/v1beta/models/imagen-3.0-generate-002:predict?key={}",
+        base_url, api_key
     );
 
     // Make the request
