@@ -1,6 +1,7 @@
 use base64::{self, Engine as _};
 use chrono;
 use directories::ProjectDirs;
+use nanoid;
 use reqwest;
 use rmcp::{
     ServerHandler, ServiceExt,
@@ -64,11 +65,8 @@ async fn generate_image_from_gemini(
 ) -> Result<String, Box<dyn std::error::Error>> {
     // Generate a filename based on the prompt
     let timestamp = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
-    let filename = format!(
-        "{}-{}.png",
-        prompt.replace(" ", "-").to_lowercase(),
-        timestamp
-    );
+    let id = nanoid::nanoid!(10);
+    let filename = format!("{}_{}.png", id, timestamp);
     let path = resources_path.join("images").join(&filename);
 
     // Get the API key from environment variables
