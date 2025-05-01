@@ -11,12 +11,15 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use warp::Filter;
 
 #[derive(Debug, Clone)]
 struct ImageGenerationServer {
     resources_path: PathBuf,
+    image_resource_server_addr: String,
+    server_port: u16,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -140,8 +143,13 @@ impl ImageGenerationServer {
 
         match generate_image_from_gemini(&prompt.prompt, &self.resources_path).await {
             Ok(filename) => {
-                // Return the URL to the generated image
-                format!("http://127.0.0.1:9981/images/{}", filename)
+                // Return the URL to the generated image using the configured address and port
+                format!(
+                    "http://{}:{}/images/{}",
+                    self.image_resource_server_addr,
+                    self.server_port, // Use the configured port
+                    filename
+                )
             }
             Err(e) => {
                 eprintln!("Error generating image: {}", e);
@@ -364,9 +372,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Ensure resources directories exist and get the path
     let resources_path = ensure_resources_dir().await?;
 
+    // Read configuration from environment variables
+    let image_resource_server_addr =
+        env::var("IMAGE_RESOURCE_SERVER_ADDR").unwrap_or_else(|_| "127.0.0.1".to_string());
+    let server_port_str = env::var("SERVER_PORT").unwrap_or_else(|_| "9981".to_string());
+    let server_port: u16 = server_port_str
+        .parse()
+        .map_err(|e| format!("Invalid SERVER_PORT: {}", e))?;
+    let listen_addr_str =
+        env::var("SERVER_LISTEN_ADDR").unwrap_or_else(|_| "127.0.0.1".to_string());
+
     // Create service for MCP
     let service = ImageGenerationServer {
         resources_path: resources_path.clone(),
+        image_resource_server_addr,
+        server_port,
     };
 
     // Check if GEMINI_API_KEY is set
@@ -400,8 +420,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Combine all routes
     let routes = images_route.or(list_images_route);
 
+    // Parse server listen address
+    let listen_addr: SocketAddr = format!("{}:{}", listen_addr_str, server_port)
+        .parse()
+        .map_err(|e| format!("Invalid SERVER_LISTEN_ADDR or SERVER_PORT: {}", e))?;
+
     // Start HTTP server in a separate task
-    let http_server = warp::serve(routes).run(([127, 0, 0, 1], 9981));
+    let http_server = warp::serve(routes).run(listen_addr);
 
     let http_handle = tokio::spawn(http_server);
 
