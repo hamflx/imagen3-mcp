@@ -50,7 +50,7 @@ struct GeminiParameters {
 
 #[derive(Debug, Deserialize)]
 struct GeminiResponse {
-    predictions: Vec<GeminiPrediction>,
+    predictions: Option<Vec<GeminiPrediction>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -114,13 +114,15 @@ async fn generate_image_from_gemini(
         }
     };
 
+    let predictions = response.predictions.unwrap_or_default();
+
     // Make sure we got at least one prediction
-    if response.predictions.is_empty() {
-        return Err("No images were generated".into());
+    if predictions.is_empty() {
+        return Err("No images were generated. This might be due to the image not passing Google's safety review.".into());
     }
 
     // Get the first prediction
-    let prediction = &response.predictions[0];
+    let prediction = &predictions[0];
 
     // Decode the base64 image using updated API
     let image_data =
